@@ -1,0 +1,29 @@
+{
+  "ociVersion": "1.0.2",
+  "hostname": "pyocirun-demo",
+  "process": {
+    "terminal": true,
+    "args": [
+      "/bin/sh"
+    ],
+    "cwd": "/",
+    "env": [
+      "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+      "TERM=xterm"
+    ]
+  },
+  "root": {
+    "path": "/home/maksim/test/alpine"
+  },
+  "linux": {
+    "resources": {
+      "cpu": {
+        "quota": 50000,
+        "period": 100000
+      },
+      "memory": {
+        "limit": 268435456
+      }
+    }
+  }
+}
