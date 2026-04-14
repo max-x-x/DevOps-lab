@@ -1,0 +1,4 @@
+site:
+  heading: "hello world from kubernetes — v2"
+  subtitle: "Версия 2: обновлено через helm upgrade"
+  accentColor: "#7c3aed"

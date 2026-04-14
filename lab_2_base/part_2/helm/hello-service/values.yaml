@@ -1,0 +1,29 @@
+nameOverride: ""
+fullnameOverride: ""
+
+replicaCount: 2
+
+image:
+  repository: nginx
+  tag: "1.27-alpine"
+  pullPolicy: IfNotPresent
+
+service:
+  type: NodePort
+  port: 80
+  targetPort: 80
+  nodePort: null
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 128Mi
+
+site:
+  title: "lab2 helm demo"
+  heading: "hello world from kubernetes"
+  subtitle: "Версия 1: деплой через Helm release"
+  accentColor: "#0d9488"
