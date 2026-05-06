@@ -1,0 +1,63 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: minio_saas_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: minio_saas
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: secret123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - saas_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: minio_saas_backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://postgres:secret123@db:5432/minio_saas
+      MINIO_DOCKER_NETWORK: minio_saas_net
+      HOST_BASE_URL: http://localhost
+      PORT_RANGE_START: "9100"
+      PORT_RANGE_END: "9250"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - saas_net
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: minio_saas_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    networks:
+      - saas_net
+    ports:
+      - "3000:80"
+
+networks:
+  saas_net:
+    name: minio_saas_net
+    driver: bridge
+
+volumes:
+  postgres_data:

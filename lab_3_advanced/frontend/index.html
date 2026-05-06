@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MinIO SaaS — Storage Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- ── Navbar ── -->
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <div class="brand-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+          <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+        </svg>
+      </div>
+      <span class="brand-name">MinIO <span class="brand-accent">SaaS</span></span>
+    </div>
+    <div class="navbar-actions">
+      <button class="btn btn-primary" id="btn-new-instance">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        New Instance
+      </button>
+    </div>
+  </nav>
+
+  <!-- ── Main content ── -->
+  <main class="main">
+
+    <!-- Stats row -->
+    <section class="stats-row">
+      <div class="stat-card">
+        <div class="stat-icon stat-icon--total">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+          </svg>
+        </div>
+        <div class="stat-body">
+          <div class="stat-value" id="stat-total">—</div>
+          <div class="stat-label">Total Instances</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon stat-icon--running">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="5 3 19 12 5 21 5 3"/>
+          </svg>
+        </div>
+        <div class="stat-body">
+          <div class="stat-value" id="stat-running">—</div>
+          <div class="stat-label">Running</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon stat-icon--stopped">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>
+          </svg>
+        </div>
+        <div class="stat-body">
+          <div class="stat-value" id="stat-stopped">—</div>
+          <div class="stat-label">Stopped</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon stat-icon--buckets">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 7h18"/><path d="M5 7l2 12h10l2-12"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/>
+          </svg>
+        </div>
+        <div class="stat-body">
+          <div class="stat-value" id="stat-buckets">—</div>
+          <div class="stat-label">Total Buckets</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Instance grid -->
+    <section class="instances-section">
+      <div class="section-header">
+        <h2 class="section-title">Instances</h2>
+        <button class="btn btn-ghost btn-sm" id="btn-refresh" title="Refresh">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+          </svg>
+          Refresh
+        </button>
+      </div>
+
+      <div class="instance-grid" id="instance-grid">
+        <!-- populated by JS -->
+      </div>
+
+      <div class="empty-state" id="empty-state" hidden>
+        <div class="empty-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+            <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+          </svg>
+        </div>
+        <p class="empty-title">No instances yet</p>
+        <p class="empty-sub">Create your first isolated S3 storage instance.</p>
+        <button class="btn btn-primary" id="btn-new-instance-empty">New Instance</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- ── Create Modal ── -->
+  <div class="modal-backdrop" id="modal-create" hidden onclick="if(event.target===this){this.hidden=true;}">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal-header">
+        <h3 id="modal-title">Create New Instance</h3>
+        <button class="modal-close" id="btn-modal-close" type="button" aria-label="Close" onclick="document.getElementById('modal-create').hidden=true;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label" for="input-name">Instance name</label>
+          <input
+            class="form-input"
+            type="text"
+            id="input-name"
+            placeholder="my-storage"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <p class="form-hint">Lowercase letters, numbers, and hyphens only. Max 32 chars.</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="btn-modal-cancel" type="button" onclick="document.getElementById('modal-create').hidden=true;">Cancel</button>
+        <button class="btn btn-primary" id="btn-modal-submit">
+          <span id="btn-submit-label">Create Instance</span>
+          <span class="spinner" id="btn-submit-spinner" hidden></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Instance Details Modal ── -->
+  <div class="modal-backdrop" id="modal-details" hidden>
+    <div class="modal modal--wide" role="dialog" aria-modal="true" aria-labelledby="details-title">
+      <div class="modal-header">
+        <h3 id="details-title">Instance Details</h3>
+        <button class="modal-close" id="btn-details-close" type="button" aria-label="Close">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body details-layout">
+        <section class="details-section">
+          <h4 class="details-subtitle">Quick Access</h4>
+          <div id="details-summary"></div>
+        </section>
+
+        <section class="details-section">
+          <h4 class="details-subtitle">Create Bucket</h4>
+          <div class="details-row">
+            <input class="form-input" id="input-bucket-name" placeholder="my-bucket" autocomplete="off" />
+            <button class="btn btn-primary" id="btn-create-bucket" type="button">Create Bucket</button>
+          </div>
+        </section>
+
+        <section class="details-section">
+          <h4 class="details-subtitle">Buckets</h4>
+          <div class="details-table" id="details-buckets"></div>
+        </section>
+
+        <section class="details-section">
+          <h4 class="details-subtitle">Bucket Objects</h4>
+          <div class="details-table" id="details-objects"></div>
+        </section>
+
+        <section class="details-section">
+          <h4 class="details-subtitle">Upload via API</h4>
+          <div class="details-row">
+            <input class="form-input" id="input-object-name" placeholder="files/demo.txt" autocomplete="off" />
+            <button class="btn btn-ghost" id="btn-generate-upload-url" type="button">Generate URL</button>
+          </div>
+          <pre class="logs-output" id="details-upload-output">Select a bucket and generate a presigned upload URL.</pre>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Toast container ── -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
