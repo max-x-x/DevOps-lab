@@ -1,0 +1,75 @@
+name: Vault Secrets
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  vault-demo:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Request GitHub OIDC token
+        id: oidc
+        run: |
+          set -euo pipefail
+          oidc_token="$(curl -fsS \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=vault-demo" \
+            | python3 -c 'import json,sys; print(json.load(sys.stdin)["value"])')"
+          echo "::add-mask::$oidc_token"
+          echo "jwt=$oidc_token" >> "$GITHUB_OUTPUT"
+
+      - name: Login to Vault via OIDC and read secret
+        id: vault
+        env:
+          VAULT_ADDR: ${{ secrets.VAULT_ADDR }}
+          VAULT_ROLE: ${{ secrets.VAULT_ROLE }}
+          JWT_TOKEN: ${{ steps.oidc.outputs.jwt }}
+        run: |
+          set -euo pipefail
+
+          # Безопасная сборка JSON через переменные окружения, без интерполяции в shell
+          login_payload="$(python3 -c "
+          import json, os
+          print(json.dumps({
+              'jwt': os.environ['JWT_TOKEN'],
+              'role': os.environ['VAULT_ROLE']
+          }))
+          ")"
+
+          # Получаем временный Vault-токен (TTL=10min)
+          vault_token="$(curl -fsS \
+            -H "Content-Type: application/json" \
+            -H "ngrok-skip-browser-warning: true" \
+            -X POST \
+            -d "$login_payload" \
+            "$VAULT_ADDR/v1/auth/jwt/login" \
+            | python3 -c 'import json,sys; print(json.load(sys.stdin)["auth"]["client_token"])')"
+          echo "::add-mask::$vault_token"
+
+          # Читаем секрет из Vault
+          api_token="$(curl -fsS \
+            -H "X-Vault-Token: $vault_token" \
+            -H "ngrok-skip-browser-warning: true" \
+            "$VAULT_ADDR/v1/kv/data/app" \
+            | python3 -c 'import json,sys; print(json.load(sys.stdin)["data"]["data"]["api_token"])')"
+          echo "::add-mask::$api_token"
+          echo "api_token=$api_token" >> "$GITHUB_OUTPUT"
+
+      - name: Use secret without exposing it to logs
+        env:
+          API_TOKEN: ${{ steps.vault.outputs.api_token }}
+        run: |
+          set -euo pipefail
+          python3 -c 'import os; print("Secret received, length:", len(os.environ["API_TOKEN"]))'

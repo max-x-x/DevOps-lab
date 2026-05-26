@@ -1,0 +1,194 @@
+name: Good CI/CD
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: good-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  prepare:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Prepare demo project
+        run: |
+          mkdir -p src tests
+          touch src/__init__.py
+          cat > src/calc.py <<'PY'
+          def add(a, b):
+              return a + b
+          PY
+          cat > tests/test_calc.py <<'PY'
+          from src.calc import add
+
+          def test_add():
+              assert add(2, 2) == 4
+          PY
+          cat > requirements.txt <<'TXT'
+          pytest==8.3.3
+          ruff==0.6.9
+          TXT
+
+      - name: Upload workspace artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: workspace-good
+          path: |
+            src
+            tests
+            requirements.txt
+
+  lint:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    needs: prepare
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Download workspace artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: workspace-good
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Restore virtualenv cache
+        id: venv-cache
+        uses: actions/cache@v5
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-py312-${{ hashFiles('requirements.txt') }}
+
+      - name: Create venv and install dependencies
+        if: steps.venv-cache.outputs.cache-hit != 'true'
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install --upgrade pip
+          .venv/bin/pip install -r requirements.txt
+
+      - name: Lint
+        run: .venv/bin/ruff check src tests
+
+  test:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    needs: lint
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Download workspace artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: workspace-good
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Restore virtualenv cache
+        id: venv-cache
+        uses: actions/cache@v5
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-py312-${{ hashFiles('requirements.txt') }}
+
+      - name: Create venv and install dependencies
+        if: steps.venv-cache.outputs.cache-hit != 'true'
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install --upgrade pip
+          .venv/bin/pip install -r requirements.txt
+
+      - name: Run tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: .venv/bin/pytest -q tests
+
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    needs: test
+    steps:
+      - name: Download workspace artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: workspace-good
+
+      - name: Validate build inputs
+        run: |
+          test -f src/calc.py
+          test -f tests/test_calc.py
+          test -f requirements.txt
+
+      - name: Build archive and checksum
+        run: |
+          mkdir -p dist
+          zip -r dist/app-good.zip src tests requirements.txt
+          cd dist
+          shasum -a 256 app-good.zip > app-good.sha256
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: build-good
+          path: dist
+
+  deploy:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: build-good
+          path: .
+
+      - name: Verify artifact checksum
+        run: |
+          if [ -f dist/app-good.sha256 ] && [ -f dist/app-good.zip ]; then
+            cd dist
+            shasum -a 256 -c app-good.sha256
+          elif [ -f app-good.sha256 ] && [ -f app-good.zip ]; then
+            shasum -a 256 -c app-good.sha256
+          else
+            echo "Build artifact files were not found"
+            ls -la
+            exit 1
+          fi
+
+      - name: Deploy
+        run: |
+          echo "Deploying build from main branch"
+          if [ -d dist ]; then
+            ls -la dist
+          else
+            ls -la
+          fi
