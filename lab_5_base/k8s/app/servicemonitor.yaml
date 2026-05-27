@@ -1,0 +1,18 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: hello-app
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: lab-5-base
+spec:
+  namespaceSelector:
+    matchNames:
+      - lab5-app
+  selector:
+    matchLabels:
+      app: hello-app
+  endpoints:
+    - port: metrics
+      interval: 15s
+      path: /metrics

@@ -1,0 +1,84 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hello-site
+  namespace: lab5-app
+  labels:
+    app: hello-app
+    app.kubernetes.io/part-of: lab-5-base
+data:
+  index.html: |
+    <!DOCTYPE html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1" />
+      <title>lab5 - monitoring demo</title>
+      <style>
+        body {
+          margin: 0;
+          min-height: 100vh;
+          display: grid;
+          place-items: center;
+          font-family: Inter, Arial, sans-serif;
+          background: #0f172a;
+          color: #e2e8f0;
+        }
+        main {
+          width: min(90vw, 720px);
+          border: 1px solid #334155;
+          border-radius: 14px;
+          padding: 2rem;
+          background: #111827;
+        }
+        h1 {
+          margin: 0 0 0.8rem;
+          color: #22d3ee;
+        }
+        p {
+          margin: 0.45rem 0;
+          line-height: 1.6;
+        }
+        code {
+          background: #1f2937;
+          border: 1px solid #374151;
+          padding: 0.08rem 0.35rem;
+          border-radius: 6px;
+        }
+      </style>
+    </head>
+    <body>
+      <main>
+        <h1>lab_5_base: Kubernetes Monitoring</h1>
+        <p>Приложение работает в namespace <code>lab5-app</code>.</p>
+        <p>Метрики nginx публикует контейнер <code>nginx-prometheus-exporter</code> на порту <code>9113</code>.</p>
+        <p>Стенд предназначен для Prometheus + Grafana + Alertmanager (Telegram).</p>
+      </main>
+    </body>
+    </html>
+  default.conf: |
+    server {
+      listen 80;
+      server_name _;
+
+      root /usr/share/nginx/html;
+      index index.html;
+
+      add_header X-Content-Type-Options nosniff always;
+      add_header X-Frame-Options DENY always;
+      add_header X-XSS-Protection "1; mode=block" always;
+
+      location / {
+        try_files $uri $uri/ /index.html;
+      }
+
+      location = /healthz {
+        access_log off;
+        return 200 "ok\n";
+      }
+
+      location = /nginx_status {
+        stub_status;
+        access_log off;
+      }
+    }

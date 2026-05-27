@@ -1,0 +1,36 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: lab5-app-alerts
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: lab-5-base
+spec:
+  groups:
+    - name: lab5-app.rules
+      rules:
+        - alert: HelloAppScaledToZero
+          expr: kube_deployment_spec_replicas{namespace="lab5-app",deployment="hello-app"} < 1
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: "hello-app replicas set to zero"
+            description: "Deployment hello-app in namespace lab5-app has 0 desired replicas for more than 1 minute."
+        - alert: HelloAppUnavailable
+          expr: kube_deployment_status_replicas_available{namespace="lab5-app",deployment="hello-app"} < on(namespace,deployment) kube_deployment_spec_replicas{namespace="lab5-app",deployment="hello-app"}
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: "hello-app availability degraded"
+            description: "Available replicas are lower than desired replicas for deployment hello-app."
+        - alert: HelloAppTargetMissing
+          expr: absent_over_time(up{job="hello-service",namespace="lab5-app"}[1m]) == 1
+          for: 30s
+          labels:
+            severity: critical
+            namespace: lab5-app
+          annotations:
+            summary: "hello-app scrape target disappeared"
+            description: "Prometheus cannot discover/scrape hello-service target for more than 1 minute."

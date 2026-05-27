@@ -1,0 +1,31 @@
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: "null"
+  group_by:
+    - alertname
+    - namespace
+  group_wait: 10s
+  group_interval: 1m
+  repeat_interval: 2m
+  routes:
+    - receiver: telegram
+      matchers:
+        - namespace="lab5-app"
+        - severity=~"warning|critical"
+
+receivers:
+  - name: "null"
+  - name: telegram
+    telegram_configs:
+      - bot_token: "REPLACE_WITH_TELEGRAM_BOT_TOKEN"
+        chat_id: 123456789
+        parse_mode: HTML
+        send_resolved: true
+        message: |-
+          <b>[{{ .Status | toUpper }}]</b> {{ .CommonLabels.alertname }}
+          Namespace: {{ .CommonLabels.namespace }}
+          Severity: {{ .CommonLabels.severity }}
+          Summary: {{ .CommonAnnotations.summary }}
+          Description: {{ .CommonAnnotations.description }}
